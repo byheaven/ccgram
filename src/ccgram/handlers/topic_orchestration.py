@@ -277,12 +277,36 @@ async def _rebind_existing_topic_by_name(
 async def handle_new_window(event: NewWindowEvent, bot: Bot) -> None:
     """Create or bind a Telegram forum topic for a newly detected tmux window.
 
-    Skips if the window is already bound. Reuses one stale same-name topic when
-    it still exists; otherwise creates one topic per unique group chat.
+    Skips if the window is already bound. When CCGRAM_AUTO_TOPIC_WINDOWS is
+    set, skips windows whose names are not in the allowlist. Reuses one stale
+    same-name topic when it still exists; otherwise creates one topic per
+    unique group chat, binding all users in that chat.
     """
     if _is_window_already_bound(event.window_id):
         logger.debug(
             "New window %s already bound, skipping topic creation", event.window_id
+        )
+        return
+
+    # v10 allowlist guard: only create topics for window names in the allowlist.
+    # Default (env var unset) is ["Flow", "Pulse"] — v10-restrictive.
+    # Empty frozenset (env var set to "") means deny all.
+    allowlist = config.auto_topic_windows
+    if allowlist:
+        topic_name = event.window_name or Path(event.cwd).name or event.window_id
+        if topic_name not in allowlist:
+            logger.info(
+                "Skipping auto-topic for window %s (%s): not in CCGRAM_AUTO_TOPIC_WINDOWS allowlist %s",
+                event.window_id,
+                topic_name,
+                allowlist,
+            )
+            return
+    else:
+        # Empty allowlist = deny all (explicit CCGRAM_AUTO_TOPIC_WINDOWS="")
+        logger.info(
+            "Skipping auto-topic for window %s: CCGRAM_AUTO_TOPIC_WINDOWS is empty (deny all)",
+            event.window_id,
         )
         return
 

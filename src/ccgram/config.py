@@ -236,6 +236,27 @@ class Config:
         self.autoclose_dead_minutes: int = int(
             os.getenv("AUTOCLOSE_DEAD_MINUTES", "10")
         )
+        # v10 auto-topic window allowlist.
+        # Controls which tmux window names get auto-created Telegram topics.
+        # Comma-separated list of window names.
+        #
+        # DEFAULT (env var unset): ["Flow", "Pulse"] — v10-restrictive.
+        #   Only infrastructure windows get topics; manager task windows do not.
+        # Explicit empty string "": deny all — no windows get auto-topics.
+        # Non-empty value: use that list verbatim.
+        _allow_raw = os.getenv("CCGRAM_AUTO_TOPIC_WINDOWS")
+        if _allow_raw is None:
+            # Env var not set: v10 default — only Flow + Pulse
+            self.auto_topic_windows: frozenset[str] = frozenset(
+                ["Flow", "Pulse"]
+            )
+        else:
+            _allow = _allow_raw.strip()
+            self.auto_topic_windows = (
+                frozenset(n.strip() for n in _allow.split(",") if n.strip())
+                if _allow
+                else frozenset()  # Explicit empty string = deny all
+            )
 
     def is_user_allowed(self, user_id: int) -> bool:
         """Check if a user is in the allowed list."""
