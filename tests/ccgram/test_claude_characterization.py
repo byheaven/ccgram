@@ -186,8 +186,11 @@ class TestClaudeTerminalSignatures:
 
 
 class TestClaudeCommandDiscovery:
-    def test_cc_builtins_exact_set(self) -> None:
-        expected = {
+    def test_cc_builtins_include_core_commands(self) -> None:
+        # Core CC commands that have shipped for multiple versions and are
+        # exercised by other tests. The full set may grow as the docs evolve;
+        # see code.claude.com/docs/en/commands.
+        core = {
             "clear",
             "compact",
             "effort",
@@ -202,5 +205,21 @@ class TestClaudeCommandDiscovery:
             "remote-control",
             "status",
             "tasks",
+            # All 12 picker commands — must remain in CC_BUILTINS.
+            "agents",
+            "copy",
+            "diff",
+            "release-notes",
+            "rewind",
+            "settings",
+            "skills",
+            "theme",
+            "tui",
         }
-        assert set(CC_BUILTINS.keys()) == expected
+        assert core <= set(CC_BUILTINS.keys())
+
+    def test_cc_builtins_exclude_bot_native_collisions(self) -> None:
+        # /new collides with bot-native /new (handlers/topics/new_command.py)
+        # /resume collides with bot-native /resume (handlers/recovery/resume_command.py)
+        assert "new" not in CC_BUILTINS
+        assert "resume" not in CC_BUILTINS

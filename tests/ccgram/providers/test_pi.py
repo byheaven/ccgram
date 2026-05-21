@@ -592,9 +592,12 @@ class TestCapabilities:
             "/share",
             "/tree",
         }
-        # /new and /resume reserved by ccgram bot-native handlers
         assert "/new" not in caps.builtin_commands
         assert "/resume" not in caps.builtin_commands
+
+        assert caps.tui_picker_commands == frozenset(
+            {"model", "login", "fork", "clone", "import", "settings"}
+        )
 
 
 class TestDiscoverCommands:

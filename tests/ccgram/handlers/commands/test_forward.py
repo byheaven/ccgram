@@ -8,8 +8,6 @@ from ccgram.handlers.commands import forward_command_handler
 
 
 _FW = "ccgram.handlers.commands.forward"
-_MS = "ccgram.handlers.commands.menu_sync"
-_FP = "ccgram.handlers.commands.failure_probe"
 _SS = "ccgram.handlers.commands.status_snapshot"
 
 
@@ -75,6 +73,7 @@ class TestForwardCommandResolution:
                 name="claude",
                 supports_incremental_read=True,
                 supports_status_snapshot=False,
+                tui_picker_commands=frozenset(),
             )
         )
         self.mock_probe_ctx = AsyncMock(return_value=(None, None, None))
@@ -167,6 +166,42 @@ class TestForwardCommandResolution:
         await forward_command_handler(update, _make_context())
 
         self.mock_send_to_window.assert_called_once_with("@1", "/cost")
+
+    async def test_tui_picker_hint_appended_for_known_picker_command(self) -> None:
+        self.mock_provider.capabilities.tui_picker_commands = frozenset({"model"})
+        update = _make_update(text="/model")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "Sent: /model" in reply_text
+        assert "drive the picker" in reply_text
+        assert "/toolbar" in reply_text
+
+    async def test_no_picker_hint_for_non_picker_command(self) -> None:
+        self.mock_provider.capabilities.tui_picker_commands = frozenset({"model"})
+        update = _make_update(text="/clear")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert reply_text == "⚡ [project] Sent: /clear"
+
+    async def test_no_picker_hint_when_picker_command_has_args(self) -> None:
+        self.mock_provider.capabilities.tui_picker_commands = frozenset({"model"})
+        update = _make_update(text="/model claude-opus-4-5")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "drive the picker" not in reply_text
+        assert "/toolbar" not in reply_text
+        self.mock_send_to_window.assert_called_once_with("@1", "/model claude-opus-4-5")
+
+    async def test_picker_hint_with_botname_mention(self) -> None:
+        self.mock_provider.capabilities.tui_picker_commands = frozenset({"model"})
+        update = _make_update(text="/model@mybot")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "drive the picker" in reply_text
 
     async def test_botname_mention_stripped(self) -> None:
         update = _make_update(text="/clear@mybot")
@@ -283,6 +318,7 @@ class TestForwardCommandResolution:
                 name="codex",
                 supports_incremental_read=True,
                 supports_status_snapshot=True,
+                tui_picker_commands=frozenset(),
             ),
             build_status_snapshot=MagicMock(return_value="Status snapshot body"),
             has_output_since=MagicMock(return_value=False),
@@ -312,6 +348,7 @@ class TestForwardCommandResolution:
                 name="claude",
                 supports_incremental_read=True,
                 supports_status_snapshot=False,
+                tui_picker_commands=frozenset(),
             ),
             build_status_snapshot=MagicMock(return_value=None),
         )
@@ -345,6 +382,7 @@ class TestForwardCommandResolution:
                 name="codex",
                 supports_incremental_read=True,
                 supports_status_snapshot=True,
+                tui_picker_commands=frozenset(),
             ),
             build_status_snapshot=MagicMock(return_value=None),
             has_output_since=MagicMock(return_value=True),
@@ -399,6 +437,7 @@ class TestForwardCommandResolution:
                 name="codex",
                 supports_incremental_read=True,
                 supports_status_snapshot=False,
+                tui_picker_commands=frozenset(),
             )
         )
         with (
@@ -408,9 +447,218 @@ class TestForwardCommandResolution:
             update = _make_update(text="/remote-control")
             await forward_command_handler(update, _make_context())
 
-        # Gate is gone: the slash forwards to the provider. The capability
-        # check now lives inside arm_rc_probe, which no-ops for non-Claude.
         self.mock_send_to_window.assert_called_once_with(
             "@1", "/remote-control project"
         )
         mock_arm.assert_called_once()
+
+
+def _real_provider(name: str):
+    if name == "claude":
+        from ccgram.providers.claude import ClaudeProvider
+
+        return ClaudeProvider()
+    if name == "codex":
+        from ccgram.providers.codex import CodexProvider
+
+        return CodexProvider()
+    if name == "gemini":
+        from ccgram.providers.gemini import GeminiProvider
+
+        return GeminiProvider()
+    if name == "pi":
+        from ccgram.providers.pi import PiProvider
+
+        return PiProvider()
+    raise ValueError(name)
+
+
+class TestForwardWithRealProvider:
+    @pytest.fixture(autouse=True)
+    def _setup_mocks(self):
+        self.mock_tr = MagicMock()
+        self.mock_tr.resolve_window_for_thread.return_value = "@1"
+        self.mock_tr.get_display_name.return_value = "project"
+        self.mock_tr.set_group_chat_id = MagicMock()
+
+        self.mock_ws = MagicMock()
+
+        self.mock_wq = MagicMock()
+        self.mock_wq.view_window.return_value = SimpleNamespace(
+            transcript_path=None,
+            session_id="sess-1",
+            cwd="/work/repo",
+            provider_name="claude",
+        )
+        self.mock_wq.get_window_provider.return_value = "claude"
+
+        self.mock_tm = MagicMock()
+        self.mock_tm.find_window_by_id = AsyncMock(
+            return_value=MagicMock(window_id="@1")
+        )
+        self.mock_tm.capture_pane = AsyncMock(return_value="")
+
+        self._provider_patch = patch(f"{_FW}.get_provider_for_window")
+        self._mock_get_provider = self._provider_patch.start()
+
+        with (
+            patch(f"{_FW}.thread_router", self.mock_tr),
+            patch(f"{_FW}.window_store", self.mock_ws),
+            patch(f"{_FW}.window_query", self.mock_wq),
+            patch(
+                f"{_FW}.send_to_window",
+                new_callable=AsyncMock,
+                return_value=(True, ""),
+            ) as self.mock_send_to_window,
+            patch(f"{_FW}.tmux_manager", self.mock_tm),
+            patch(
+                f"{_FW}._build_provider_command_metadata",
+                return_value={},
+            ),
+            patch(
+                f"{_FW}._capture_command_probe_context",
+                AsyncMock(return_value=(None, None, None)),
+            ),
+            patch(f"{_FW}._spawn_command_failure_probe", MagicMock()),
+            patch(f"{_FW}.sync_scoped_provider_menu", new_callable=AsyncMock),
+            patch(f"{_FW}._maybe_send_status_snapshot", new_callable=AsyncMock),
+            patch("ccgram.handlers.status.rc_probe.arm_rc_probe"),
+        ):
+            yield
+
+        self._provider_patch.stop()
+
+    @pytest.mark.parametrize(
+        "provider_name,picker_cmd",
+        [
+            ("claude", "model"),
+            ("codex", "model"),
+            ("gemini", "model"),
+            ("pi", "model"),
+            ("claude", "effort"),
+            ("codex", "personality"),
+            ("gemini", "auth"),
+            ("pi", "login"),
+        ],
+    )
+    async def test_picker_command_produces_hint(
+        self, provider_name: str, picker_cmd: str
+    ) -> None:
+        self._mock_get_provider.return_value = _real_provider(provider_name)
+        update = _make_update(text=f"/{picker_cmd}")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert f"Sent: /{picker_cmd}" in reply_text
+        assert "drive the picker" in reply_text
+        assert "/toolbar" in reply_text
+
+    @pytest.mark.parametrize("provider_name", ["claude", "codex", "gemini", "pi"])
+    async def test_non_picker_command_no_hint(self, provider_name: str) -> None:
+        self._mock_get_provider.return_value = _real_provider(provider_name)
+        update = _make_update(text="/clear")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "/toolbar" not in reply_text
+        assert "drive the picker" not in reply_text
+
+    @pytest.mark.parametrize("provider_name", ["claude", "codex", "gemini", "pi"])
+    async def test_picker_command_with_args_no_hint(self, provider_name: str) -> None:
+        self._mock_get_provider.return_value = _real_provider(provider_name)
+        update = _make_update(text="/model some-value")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "/toolbar" not in reply_text
+        assert "drive the picker" not in reply_text
+
+    @pytest.mark.parametrize("provider_name", ["claude", "codex", "gemini", "pi"])
+    async def test_uppercase_picker_command_still_fires_hint(
+        self, provider_name: str
+    ) -> None:
+        self._mock_get_provider.return_value = _real_provider(provider_name)
+        update = _make_update(text="/MODEL")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "drive the picker" in reply_text
+
+    async def test_claude_hyphenated_picker_reachable_via_telegram_form(self) -> None:
+        """`/release-notes` is hyphenated; Telegram bots only accept underscores.
+
+        The user types `/release_notes`; the provider_map reverses it to the
+        original `release-notes`. Verify the picker hint still fires.
+        """
+        from ccgram.providers.claude import ClaudeProvider
+
+        claude = ClaudeProvider()
+        assert "release-notes" in claude.capabilities.tui_picker_commands
+        self._mock_get_provider.return_value = claude
+        with patch(
+            f"{_FW}._build_provider_command_metadata",
+            return_value={"release_notes": "release-notes"},
+        ):
+            update = _make_update(text="/release_notes")
+            await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "drive the picker" in reply_text
+
+    async def test_degraded_hint_when_toolbar_lacks_nav_keys(self) -> None:
+        """Custom toolbar that drops up/down must not be promised in the hint."""
+        from ccgram.providers.claude import ClaudeProvider
+        from ccgram.toolbar_config import (
+            BUILTIN_ACTIONS,
+            ToolbarConfig,
+            ToolbarLayout,
+        )
+
+        stripped = ToolbarConfig(
+            layouts={
+                "claude": ToolbarLayout(
+                    style="emoji_text",
+                    buttons=(("screen", "send", "close"),),
+                )
+            },
+            actions=dict(BUILTIN_ACTIONS),
+        )
+        self._mock_get_provider.return_value = ClaudeProvider()
+        with patch(
+            "ccgram.handlers.toolbar.toolbar_keyboard.get_toolbar_config",
+            return_value=stripped,
+        ):
+            update = _make_update(text="/model")
+            await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        # Degraded copy: points at /toolbar but does not promise specific buttons.
+        assert "/toolbar" in reply_text
+        assert "drive the picker" in reply_text
+        assert "🔼" not in reply_text
+        assert "🔽" not in reply_text
+        assert "Enter Esc" not in reply_text
+
+    async def test_full_hint_when_toolbar_has_nav_keys(self) -> None:
+        """Default toolbar has up/down/enter/esc — full hint with glyphs fires."""
+        from ccgram.providers.claude import ClaudeProvider
+
+        self._mock_get_provider.return_value = ClaudeProvider()
+        update = _make_update(text="/model")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "🔼" in reply_text
+        assert "🔽" in reply_text
+        assert "Enter Esc" in reply_text
+
+    async def test_shell_provider_never_emits_picker_hint(self) -> None:
+        from ccgram.providers.shell import ShellProvider
+
+        self._mock_get_provider.return_value = ShellProvider()
+        update = _make_update(text="/model")
+        await forward_command_handler(update, _make_context())
+
+        reply_text = update.message.reply_text.call_args[0][0]
+        assert "drive the picker" not in reply_text
+        assert "/toolbar" not in reply_text

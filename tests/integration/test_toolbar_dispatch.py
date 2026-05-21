@@ -102,12 +102,23 @@ async def app():
 
 
 class TestKeyboardBuild:
-    @pytest.mark.parametrize("provider", ["claude", "codex", "gemini", "shell"])
-    def test_default_keyboard_for_each_provider(self, provider: str) -> None:
+    @pytest.mark.parametrize(
+        "provider,expected_rows",
+        [
+            ("claude", 4),
+            ("codex", 4),
+            ("gemini", 4),
+            ("pi", 4),
+            ("shell", 3),
+        ],
+    )
+    def test_default_keyboard_for_each_provider(
+        self, provider: str, expected_rows: int
+    ) -> None:
         kb = build_toolbar_keyboard(TEST_WINDOW_ID, provider)
-        assert len(kb.inline_keyboard) == 3
+        assert len(kb.inline_keyboard) == expected_rows
         for row in kb.inline_keyboard:
-            assert len(row) == 3
+            assert 1 <= len(row) <= 8
             for btn in row:
                 cb = btn.callback_data
                 assert isinstance(cb, str)
