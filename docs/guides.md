@@ -137,7 +137,6 @@ All settings accept both CLI flags and environment variables. CLI flags take pre
 | `CCGRAM_LIVE_VIEW_TIMEOUT` / `--live-view-timeout`   | `300`                          | Live view auto-stop timeout in seconds (min 1)                                         |
 | `CCGRAM_STATUS_MODE` / `--status-mode`               | `system`                       | Topic emoji color scheme: `system` (green=working) or `user` (green=ready)             |
 | `CCGRAM_HIDE_TOOL_CALLS` / `--hide-tool-calls`       | `true`                         | Globally hide `tool_use`/`tool_result` messages (per-window override via `/toolcalls`) |
-| `CCGRAM_SCREENSHOT_HISTORY`                          | `500`                          | Scrollback lines captured by `/screenshot` and the 📷 button (min 50)                  |
 | `CCGRAM_PROMPT_MODE` / `--prompt-mode`               | `wrap`                         | Shell prompt marker: `wrap` (append `⌘N⌘`) or `replace` (legacy `{prefix}:N❯`)         |
 | `CCGRAM_PROMPT_MARKER`                               | `ccgram`                       | Marker prefix used only by `replace` mode                                              |
 | `CCGRAM_PANE_LIFECYCLE_NOTIFY`                       | `false`                        | Default for per-window pane create/close notifications (toggle via `/panes`)           |
@@ -342,11 +341,18 @@ Both values are clamped to a minimum of 1 second.
 
 ## Screenshots
 
-`/screenshot` (or the 📷 status-bar button) captures the bound tmux pane as a PNG. By default it captures **scrollback**, not just the visible viewport — set `CCGRAM_SCREENSHOT_HISTORY` to tune line count (default 500, min 50). ANSI color is preserved.
+`/screenshot` (or the 📷 status-bar button) captures the current viewport of the bound tmux pane as a readable PNG with ANSI color.
 
-For shell topics, the last command and its output are sliced from between prompt markers when available, so you see exactly one command's output. Other providers get full scrollback.
+Live view (auto-refreshing) uses the same viewport capture at a smaller font size for lower file sizes.
 
-Live view (auto-refreshing) keeps the original viewport-only capture for low-latency refresh.
+## Last Reply (`/last`)
+
+`/last` (or the 📄 **Last** toolbar button) resends the most recent assistant reply to the current topic:
+
+- **AI providers** (Claude, Codex, Gemini, Pi) — extracts contiguous assistant text blocks after the last user message from the session transcript. Falls back to the most recent assistant text if no turn boundary is found.
+- **Shell** — captures scrollback and extracts the last command+output block between prompt markers.
+
+Responses longer than 4096 characters are sent as a `.txt` document attachment instead of a text message.
 
 ## File Delivery (`/send`)
 
@@ -373,7 +379,7 @@ Tunables: `CCGRAM_SEND_SEARCH_DEPTH` (default 5), `CCGRAM_SEND_MAX_RESULTS` (def
 
 ## Action Toolbar (`/toolbar`)
 
-`/toolbar` opens an inline keyboard of provider-specific tmux key actions. Default layout is a 3×3 grid (Pi adds a 5-cell nav row). The universal first row is `[📷 Screen, ⏹ Ctrl-C, 📺 Live]`.
+`/toolbar` opens an inline keyboard of provider-specific tmux key actions. Row 1 is universal: `[📷 Screen, ⏹ Ctrl-C, 📺 Live]`. Row 2 varies per provider: Claude (Mode, Think, Esc), Codex (Esc, Tab, Mode), Gemini (Mode, YOLO, Esc), Pi (Esc, Tab, π Model), Shell (Enter, EOF, Suspend). Claude/Codex/Gemini/Pi add a navigation row (Up, Enter, Down). The final row is `[📄 Last, Get File, Close]`; Shell folds Esc in: `[📄 Last, Get File, Esc, Close]`.
 
 Toggle actions (Mode = Shift+Tab, Think = Tab, YOLO = Ctrl+Y) capture the pane ~250 ms after the key press and report the resulting mode-line in the toast (e.g., `auto-accept edits on`).
 
@@ -401,7 +407,7 @@ Action types:
 
 - `key` — send a tmux key sequence (`"Tab"`, `"C-c"`, `'\x1b[Z'`). Set `literal=true` for raw byte sequences (TOML literal strings — single-quoted).
 - `text` — send literal text + Enter (e.g. `"/clear"`, prompt templates).
-- `builtin` — reserved (`screen`, `ctrlc`, `live`, `send`, `close`). Users cannot define new ones.
+- `builtin` — reserved (`screen`, `ctrlc`, `live`, `getfile`, `last`, `close`). Users cannot define new ones.
 
 Action names must be ≤24 chars (callback_data budget). Providers absent from the TOML keep their built-in defaults. Malformed entries are logged and skipped — the loader never raises.
 
