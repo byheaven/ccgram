@@ -262,7 +262,7 @@ Tokens are HMAC-signed with the bot token, scoped to a single window + user, and
 
 ### Reverse-proxy snippet (caddy)
 
-```
+```caddy
 ccgram.example.com {
   reverse_proxy 127.0.0.1:8765
 }
