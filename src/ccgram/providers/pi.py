@@ -128,7 +128,7 @@ class PiProvider(JsonlProvider):
         # Pickers verified by sending each command to a live pi process and
         # inspecting tmux capture-pane output (see PR #93 follow-up).
         tui_picker_commands=frozenset(
-            {"model", "login", "fork", "clone", "import", "settings"}
+            {"model", "login", "fork", "clone", "scoped-models", "settings"}
         ),
     )
 
