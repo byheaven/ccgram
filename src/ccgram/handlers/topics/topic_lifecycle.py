@@ -46,7 +46,7 @@ async def check_autoclose_timers(client: TelegramClient) -> None:
         return
 
     now = time.monotonic()
-    expired: list[tuple[int, int]] = []
+    expired: list[tuple[int, int, str]] = []
     for user_id, thread_id, ts in all_topics:
         if ts.autoclose is None:
             continue
@@ -58,18 +58,30 @@ async def check_autoclose_timers(client: TelegramClient) -> None:
         else:
             continue
         if timeout > 0 and now - entered_at >= timeout:
-            expired.append((user_id, thread_id))
+            expired.append((user_id, thread_id, state))
 
-    for user_id, thread_id in expired:
-        await _close_expired_topic(client, user_id, thread_id)
+    for user_id, thread_id, state in expired:
+        await _close_expired_topic(client, user_id, thread_id, state)
 
 
 async def _close_expired_topic(
-    client: TelegramClient, user_id: int, thread_id: int
+    client: TelegramClient, user_id: int, thread_id: int, state: str
 ) -> None:
     """Attempt to close/delete an expired topic and clean up state."""
-    chat_id = thread_router.resolve_chat_id(user_id, thread_id)
     window_id = thread_router.get_window_for_thread(user_id, thread_id)
+    if state == "dead" and window_id is not None:
+        live_window = await tmux_manager.find_window_by_id(window_id)
+        if live_window is not None:
+            lifecycle_strategy.clear_autoclose_timer(user_id, thread_id)
+            logger.info(
+                "stale_dead_autoclose_cleared",
+                thread_id=thread_id,
+                user_id=user_id,
+                window_id=window_id,
+            )
+            return
+
+    chat_id = thread_router.resolve_chat_id(user_id, thread_id)
     removed = False
     try:
         await client.delete_forum_topic(chat_id=chat_id, message_thread_id=thread_id)

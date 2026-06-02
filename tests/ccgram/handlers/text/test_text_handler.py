@@ -9,6 +9,7 @@ from ccgram.handlers.text.text_handler import (
     _handle_dead_window,
     _handle_unbound_topic,
 )
+from ccgram.handlers.polling.polling_state import lifecycle_strategy
 from ccgram.handlers.topics.directory_browser import (
     STATE_BROWSING_DIRECTORY,
     STATE_KEY,
@@ -21,6 +22,13 @@ from ccgram.handlers.user_state import (
 )
 
 _TH = "ccgram.handlers.text.text_handler"
+
+
+@pytest.fixture(autouse=True)
+def _clean_lifecycle_state():
+    lifecycle_strategy._states.clear()
+    yield
+    lifecycle_strategy._states.clear()
 
 
 class TestCheckUiGuards:
@@ -226,6 +234,19 @@ class TestHandleDeadWindow:
         result = await _handle_dead_window("@0", 100, 42, "hello", {}, message)
 
         assert result is False
+
+    @patch(f"{_TH}.tmux_manager")
+    async def test_alive_window_clears_stale_autoclose_timer(
+        self, mock_tm: MagicMock
+    ) -> None:
+        lifecycle_strategy.start_autoclose_timer(100, 42, "dead", 100.0)
+        mock_tm.find_window_by_id = AsyncMock(return_value=MagicMock())
+        message = AsyncMock()
+
+        result = await _handle_dead_window("@0", 100, 42, "hello", {}, message)
+
+        assert result is False
+        assert lifecycle_strategy.get_state(100, 42).autoclose is None
 
     @patch(f"{_TH}.safe_reply", new_callable=AsyncMock)
     @patch(f"{_TH}.render_banner")
