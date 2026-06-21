@@ -76,11 +76,11 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: add F3 assertion that `multiplexer.base` imports neither a backend nor `libtmux`/`subprocess`/`asyncio.subprocess`; extend later in Task 4.
 - Verification: `make typecheck`; `uv run pytest tests/integration/test_import_no_cycles.py -v`.
 - Manual checks: None.
-- [ ] add `multiplexer/base.py` with the `Multiplexer` Protocol covering today's `tmux_manager` public surface, normalized to value types (`ensure_session`, `list_windows`, `find_window`, `capture`, `capture_scrollback`, `pane_dims`, `send`, `send_to_pane`, `kill_window`, `rename_window`, `list_panes`, `create_window`, `set_title`, `foreground`)
-- [ ] add `MultiplexerCapabilities` dataclass with the six capability fields plus `name`
-- [ ] add field-compatible value types `WindowRef`, `PaneInfo`, `CaptureResult`, `ForegroundInfo`, `PaneDims`
-- [ ] write tests asserting value-type construction and that `multiplexer.base` imports no I/O module
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] add `multiplexer/base.py` with the `Multiplexer` Protocol covering today's `tmux_manager` public surface, normalized to value types (`ensure_session`, `list_windows`, `find_window`, `capture`, `capture_scrollback`, `pane_dims`, `send`, `send_to_pane`, `kill_window`, `rename_window`, `list_panes`, `create_window`, `set_title`, `foreground`)
+- [x] add `MultiplexerCapabilities` dataclass with the six capability fields plus `name`
+- [x] add field-compatible value types `WindowRef`, `PaneInfo`, `CaptureResult`, `ForegroundInfo`, `PaneDims`
+- [x] write tests asserting value-type construction and that `multiplexer.base` imports no I/O module
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 2: Make tmux the first backend behind the Protocol (zero behavior change)
 
@@ -92,12 +92,12 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: none new; rely on the existing suite as characterization.
 - Verification: `make check` (full gate must stay green — proves zero behavior change).
 - Manual checks: confirm value-type field names match the old `TmuxWindow`/`PaneInfo` so no call site changed semantics.
-- [ ] move the tmux implementation into `multiplexer/tmux.py` and make it satisfy `Multiplexer`
-- [ ] return `WindowRef`/`PaneInfo`/`CaptureResult`/`ForegroundInfo`/`PaneDims` from the relevant methods, preserving field names
-- [ ] add the tmux `MultiplexerCapabilities`
-- [ ] leave a `tmux_manager.py` compat shim re-exporting the singleton (removed in Task 4)
-- [ ] write tests pinning tmux capabilities and one round-trip per refactored method
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] move the tmux implementation into `multiplexer/tmux.py` and make it satisfy `Multiplexer`
+- [x] return `WindowRef`/`PaneInfo`/`CaptureResult`/`ForegroundInfo`/`PaneDims` from the relevant methods, preserving field names
+- [x] add the tmux `MultiplexerCapabilities`
+- [x] leave a `tmux_manager.py` compat shim re-exporting the singleton (removed in Task 4)
+- [x] write tests pinning tmux capabilities and one round-trip per refactored method
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 3: Registry, proxy, and CCGRAM_MULTIPLEXER switch (tmux-only)
 
@@ -109,12 +109,12 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: none new yet (F1 lands in Task 4 after migration).
 - Verification: `make test`; a unit test that the proxy raises a clear "not wired" error before bootstrap and forwards after wiring (mirrors existing proxy tests).
 - Manual checks: confirm bootstrap ordering — the multiplexer proxy is wired before `start_session_monitor` / status polling use it.
-- [ ] add `registry.py` with `get_multiplexer(name)` + singleton cache
-- [ ] add the `multiplexer` proxy and `get_multiplexer()` in `__init__.py`
-- [ ] add `config.multiplexer_name` (`CCGRAM_MULTIPLEXER`, default `tmux`)
-- [ ] wire the proxy in `bootstrap.py` before monitor/polling start
-- [ ] write tests for registry resolution, proxy not-wired/forwarding, and config default
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] add `registry.py` with `get_multiplexer(name)` + singleton cache
+- [x] add the `multiplexer` proxy and `get_multiplexer()` in `__init__.py`
+- [x] add `config.multiplexer_name` (`CCGRAM_MULTIPLEXER`, default `tmux`)
+- [x] wire the proxy in `bootstrap.py` before monitor/polling start
+- [x] write tests for registry resolution, proxy not-wired/forwarding, and config default
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 4: Migrate call sites to the proxy and land the F1–F3 fitness audits
 
@@ -126,14 +126,14 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: F1 boundary audit (AST walk modeled on `tests/ccgram/test_window_state_access_audit.py`). Before-fail/after-pass: planting a direct `from ccgram.multiplexer.tmux import ...` in a handler must fail the audit; removing it must pass.
 - Verification: `uv run pytest tests/ccgram/test_multiplexer_boundary.py tests/ccgram/test_multiplexer_contract.py -v`; then `make check`.
 - Manual checks: spot-check that no `if multiplexer.name == "tmux"` conditional leaked into handlers (gate on capabilities, not names).
-- [ ] migrate all call sites from `tmux_manager` to the `multiplexer` proxy + `Multiplexer` type
-- [ ] delete the `tmux_manager.py` compat shim
-- [ ] add `test_multiplexer_boundary.py` (F1) forbidding backend/`libtmux`/raw-shell imports outside `multiplexer/**`, `bootstrap.py`, `main.py`
-- [ ] add `test_multiplexer_contract.py` (F2) parametrized over backends, tmux leg active
-- [ ] extend `test_import_no_cycles.py` (F3) to include `multiplexer/**` and assert `base` imports no backend
-- [ ] confirm F1 fails on a planted direct-backend import, then passes after removal
-- [ ] write tests covering the above audits
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] migrate all call sites from `tmux_manager` to the `multiplexer` proxy + `Multiplexer` type
+- [x] delete the `tmux_manager.py` compat shim
+- [x] add `test_multiplexer_boundary.py` (F1) forbidding backend/`libtmux`/raw-shell imports outside `multiplexer/**`, `bootstrap.py`, `main.py`
+- [x] add `test_multiplexer_contract.py` (F2) parametrized over backends, tmux leg active
+- [x] extend `test_import_no_cycles.py` (F3) to include `multiplexer/**` and assert `base` imports no backend
+- [x] confirm F1 fails on a planted direct-backend import, then passes after removal
+- [x] write tests covering the above audits
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 5: Phase-1 verification checkpoint (seam locked, zero behavior change)
 
@@ -145,10 +145,10 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: F1–F3 all green.
 - Verification: `make check`; `uv run pytest tests/ccgram/test_multiplexer_boundary.py tests/ccgram/test_multiplexer_contract.py -v`.
 - Manual checks: confirm tmux behavior is unchanged by exercising one real flow (create window, send, capture) under `CCGRAM_MULTIPLEXER=tmux`. Recommended: run `architecture-review` on the seam before continuing.
-- [ ] run the full gate and the seam audits; all green
-- [ ] update `.claude/rules/architecture.md` module inventory for the `multiplexer/` package
-- [ ] write/refresh any characterization test that proves tmux behavior is unchanged
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] run the full gate and the seam audits; all green
+- [x] update `.claude/rules/architecture.md` module inventory for the `multiplexer/` package
+- [x] write/refresh any characterization test that proves tmux behavior is unchanged
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 6: Neutral hook identity resolver (tmux behavior unchanged)
 
@@ -160,11 +160,11 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: none archfit; the resolver is dependency-light so the hook (separate process) can import it without the backend wiring.
 - Verification: table-driven unit test for the resolver; `make test`.
 - Manual checks: confirm the tmux branch output is byte-identical to the previous `_resolve_window_id` result.
-- [ ] add `resolve_self_identity(env)` returning the neutral `SelfIdentity` (mux, session_window_key, window_id, window_name)
-- [ ] route `hook.py` through the resolver; keep the tmux branch behavior identical
-- [ ] add the herdr branch reading `$HERDR_PANE_ID` (+ `$HERDR_SOCKET_PATH` for cwd)
-- [ ] write table-driven tests (tmux env / herdr env / neither / nested-session)
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] add `resolve_self_identity(env)` returning the neutral `SelfIdentity` (mux, session_window_key, window_id, window_name)
+- [x] route `hook.py` through the resolver; keep the tmux branch behavior identical
+- [x] add the herdr branch reading `$HERDR_PANE_ID` (+ `$HERDR_SOCKET_PATH` for cwd)
+- [x] write table-driven tests (tmux env / herdr env / neither / nested-session)
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 7: Implement the herdr backend and wire the contract-test leg
 
@@ -176,12 +176,12 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: F2 contract test now runs the herdr leg when a socket is present; F1 keeps `polling/**` and handlers off `multiplexer.herdr`.
 - Verification: `uv run pytest tests/ccgram/test_herdr_backend.py -v`; with a running herdr: `uv run pytest tests/integration/ -m "herdr" -v`.
 - Manual checks: drive a real agent under `CCGRAM_MULTIPLEXER=herdr` — create window, send, capture, kill; confirm `foreground()` comes from `pane process-info` (no `ps -t`), scrollback clamps at 1000 lines, protocol-version mismatch refuses cleanly.
-- [ ] implement the `Multiplexer` methods over the herdr socket/CLI (`pane get/list/read/run/send-text/send-keys/close`, `tab`/`workspace` create/rename, `pane layout`, `pane process-info`)
-- [ ] map `wN:pN` ↔ `window_id`, parse JSON fixtures into neutral value types, clamp scrollback to `read_max_lines`
-- [ ] check and pin the herdr `protocol` version from `herdr status`; refuse on mismatch
-- [ ] register herdr in `registry.py` and enable the herdr contract-test leg
-- [ ] write unit tests (fixtures) + boundary tests (socket down, bad id, truncation)
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] implement the `Multiplexer` methods over the herdr socket/CLI (`pane get/list/read/run/send-text/send-keys/close`, `tab`/`workspace` create/rename, `pane layout`, `pane process-info`)
+- [x] map `wN:pN` ↔ `window_id`, parse JSON fixtures into neutral value types, clamp scrollback to `read_max_lines`
+- [x] check and pin the herdr `protocol` version from `herdr status`; refuse on mismatch
+- [x] register herdr in `registry.py` and enable the herdr contract-test leg
+- [x] write unit tests (fixtures) + boundary tests (socket down, bad id, truncation)
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 8: Extend restart re-resolution for non-stable ids (herdr)
 
@@ -193,11 +193,11 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: none archfit; covered by unit tests on the re-resolution branch.
 - Verification: unit test simulating a herdr restart (changed pane ids, stable session id) → correct re-map; `make test`.
 - Manual checks: restart a real herdr server and confirm a bound topic re-attaches to its agent.
-- [ ] branch `resolve_stale_ids` on `caps.ids_stable_across_restart`
-- [ ] add the herdr session-id → live-pane re-resolution using `agent_session`
-- [ ] keep the tmux display-name path unchanged
-- [ ] write tests for the herdr restart re-map and the tmux no-op
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] branch `resolve_stale_ids` on `caps.ids_stable_across_restart`
+- [x] add the herdr session-id → live-pane re-resolution using `agent_session` (joined via the hook-written session_map: live pane id → durable agent session id)
+- [x] keep the tmux display-name path unchanged
+- [x] write tests for the herdr restart re-map and the tmux no-op
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 9: herdr-aware doctor and archfit re-shape (F5)
 
@@ -209,10 +209,10 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: F5. `archfit check --config .archfit.yaml --full` should report the new rule satisfied. Before-fail/after-pass: a temporary handler import of `multiplexer_backends` should make the archfit rule fail; removing it passes. Note: archfit is not installed/CI-wired, so the enforced equivalent remains the F1 pytest audit; F5 is the recommended promotion and F6 (CI wiring) is in Post-Completion.
 - Verification: `uv run pytest` doctor tests; `archfit check --config .archfit.yaml --full` if `archfit` is available, else record the missing-tool note and rely on F1.
 - Manual checks: confirm ccgram's hook and `herdr integration install claude` coexist without clobbering `~/.claude/settings.json`.
-- [ ] extend `doctor_cmd.py` with multiplexer + herdr socket/hook checks
-- [ ] re-shape `.archfit.yaml` modules and add the forbidden-dependency rule + labels
-- [ ] write doctor tests for tmux and herdr modes
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] extend `doctor_cmd.py` with multiplexer + herdr socket/hook checks
+- [x] re-shape `.archfit.yaml` modules and add the forbidden-dependency rule + labels
+- [x] write doctor tests for tmux and herdr modes
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 10: Bind herdr agent panes to Telegram topics (one topic per agent)
 
@@ -224,11 +224,11 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: F1 keeps topic handlers off the concrete backend; routing covered by unit tests.
 - Verification: unit tests for pane→topic routing and session-id binding; with herdr running, integration test: two panes → two topics with independent streams.
 - Manual checks: split a herdr tab into two agents → confirm two topics, no stream cross-talk.
-- [ ] route each herdr agent pane to its own topic, bound by agent session id
-- [ ] surface newly-detected agent panes (including tab splits) as new topics
-- [ ] keep the tmux topic flow unchanged (gate on capabilities, not backend name)
-- [ ] write tests for pane→topic routing and session-id binding
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] route each herdr agent pane to its own topic, bound by agent session id
+- [x] surface newly-detected agent panes (including tab splits) as new topics
+- [x] keep the tmux topic flow unchanged (gate on capabilities, not backend name)
+- [x] write tests for pane→topic routing and session-id binding
+- [x] run project tests (`make test`) - must pass before next task
 
 ### Task 11: Adaptive topic prefix and cwd→workspace creation
 
@@ -240,11 +240,11 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: none archfit; table-driven label-rendering tests.
 - Verification: unit tests for prefix rendering (single-pane vs split tab) and cwd→workspace resolution; `make test`.
 - Manual checks: rename a workspace in herdr → topic re-labels; create a second agent in the same repo → same workspace prefix, distinct topic.
-- [ ] render the adaptive topic title from `agent_status` + workspace/tab labels (add `/tab` only on splits)
-- [ ] resolve new-topic cwd to an existing herdr workspace, creating one only if absent, then add tab+pane
-- [ ] re-label topics on `workspace.renamed`/`tab.renamed` without rebinding
-- [ ] write table-driven tests for prefix rendering and cwd→workspace resolution
-- [ ] run project tests (`make test`) - must pass before next task
+- [x] render the adaptive topic title from `agent_status` + workspace/tab labels (add `/tab` only on splits) — `format_agent_topic_prefix` (pure, in `multiplexer/topic_mapping.py`); the herdr adapter stamps it into `WindowRef.window_name` in `list_windows`, the existing `topic_emoji` machinery prepends the status emoji
+- [x] resolve new-topic cwd to an existing herdr workspace, creating one only if absent, then add tab+pane — `HerdrManager._resolve_workspace_id` (`workspace list` match by cwd, `workspace create` if absent) + `tab create --workspace`; lives in the adapter so `directory_callbacks`/`topic_orchestration` delegate through the seam unchanged
+- [x] re-label topics on `workspace.renamed`/`tab.renamed` without rebinding — poll-driven (event stream deferred per design): each `list_windows` recomputes the derived label, `sync_display_names` propagates it, the binding key (durable session id, Task 8) is untouched
+- [x] write table-driven tests for prefix rendering and cwd→workspace resolution — `TestFormatAgentTopicPrefix` (10-case table) + herdr adaptive-label/split/rename + workspace-reuse/create/fallback tests
+- [x] run project tests (`make test`) - must pass before next task — 5158 passed, 28 skipped; lint + typecheck + deptry clean
 
 ### Task 12: Verify acceptance criteria
 
@@ -256,12 +256,12 @@ Whole-plan commands (repo Makefile targets):
 - Fitness gate: F1–F5 green; F6 noted as follow-up.
 - Verification: `make check`; the seam audits; with herdr running, `uv run pytest tests/integration/ -m "herdr" -v`.
 - Manual checks: run `architecture-review` scoped to the multiplexer seam and topic mapping and confirm code matches the design.
-- [ ] verify all requirements from Overview are implemented for both `CCGRAM_MULTIPLEXER=tmux` and `=herdr`
-- [ ] verify herdr topic mapping: one topic per agent pane, adaptive prefix, cwd→workspace
-- [ ] run the full project test suite and the seam audits
-- [ ] run the project linter (`make lint`, including `lint-lazy`) - all issues fixed
-- [ ] update architecture docs and the `CCGRAM_MULTIPLEXER` env-var note
-- [ ] run project tests (`make test`) - must pass
+- [x] verify all requirements from Overview are implemented for both `CCGRAM_MULTIPLEXER=tmux` and `=herdr` — tmux path: full suite green (5158 passed, 28 skipped) + F1/F2 seam audits (181 passed); herdr backend covered by `test_herdr_backend.py` unit + contract legs. The live herdr run (`-m herdr`, needs a running socket) is integration-only and not automatable here.
+- [x] verify herdr topic mapping: one topic per agent pane, adaptive prefix, cwd→workspace — covered by `test_topic_mapping.py` (`TestHerdrPaneRouting`, `TestFormatAgentTopicPrefix`) + herdr backend adaptive-label/workspace-resolution tests, all passing
+- [x] run the full project test suite and the seam audits — `make test` 5158 passed; `test_multiplexer_boundary.py`+`test_multiplexer_contract.py` 181 passed
+- [x] run the project linter (`make lint`, including `lint-lazy`) - all issues fixed — lint-lazy clean, ruff all checks passed; pyright 0 errors; deptry no issues
+- [x] update architecture docs and the `CCGRAM_MULTIPLEXER` env-var note — README + `docs/guides.md` config tables add the `CCGRAM_MULTIPLEXER` row; `docs/architecture.md` overview/diagrams updated to the `multiplexer/` seam (stale `tmux_manager.py` references removed); `.claude/rules/architecture.md` inventory already covers the seam
+- [x] run project tests (`make test`) - must pass — 5158 passed, 28 skipped
 
 ## Acceptance criteria
 
