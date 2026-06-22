@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/github/license/alexei-led/ccgram)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-**Control AI coding agents from your phone.** CCGram bridges Telegram to tmux — monitor output, respond to prompts, and manage multiple sessions without touching your computer. Supports [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Pi](https://pi.dev), and plain shell sessions.
+**Control AI coding agents from your phone.** CCGram bridges Telegram to your terminal multiplexer ([tmux](https://github.com/tmux/tmux) by default, or [herdr](https://github.com/ogulcancelik/herdr)) — monitor output, respond to prompts, and manage multiple sessions without touching your computer. Supports [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex CLI](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Pi](https://pi.dev), and plain shell sessions.
 
 ---
 
@@ -42,11 +42,11 @@ graph LR
   subgraph bridge["⚡ CCGram"]
     direction TB
     B1["read output\n(transcripts + terminal)"]
-    B2["send keystrokes\n(tmux send-keys)"]
+    B2["send keystrokes\n(tmux / herdr)"]
     B3["instant notifications\n(Claude hooks)"]
   end
 
-  subgraph machine["🖥️ Your Machine — tmux session"]
+  subgraph machine["🖥️ Your Machine — tmux / herdr"]
     direction TB
     W1["window @0 · claude"]
     W2["window @1 · codex"]
@@ -237,7 +237,7 @@ Full reference: **[docs/guides.md](docs/guides.md#configuration)**
 
 CCGram ships an optional web dashboard that opens from a Telegram inline button and runs inside Telegram's WebApp container. Three surfaces are available in v3.0:
 
-- **Live terminal** — xterm.js stream of the bound tmux pane (read-only)
+- **Live terminal** — xterm.js stream of the bound multiplexer pane (read-only)
 - **Transcript** — paginated session history with full-text search
 - **Multi-pane grid** — every pane in the window in one view; click to focus
 
