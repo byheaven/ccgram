@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.4] - 2026-06-28
+
+### Fixed
+
+- Preserve transcript byte offsets across tmux rename refreshes — prevents full replay to Telegram on window rename ([#121](https://github.com/alexei-led/ccgram/pull/121))
+- Rebind stale hook sessions after agent process restart; add timeout to `send_to_window`; emit valid JSON for Codex Stop hooks ([#124](https://github.com/alexei-led/ccgram/pull/124))
+
 ## [4.3.3] - 2026-06-28
 
 ### Changed
