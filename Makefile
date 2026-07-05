@@ -57,7 +57,7 @@ arch-guard:
 # pre-push hook (scoped to src changes) and suitable for CI.
 arch-check:
 	@command -v archfit >/dev/null 2>&1 || { echo "archfit not installed — skipping (see github.com/alexei-led/archfit)"; exit 0; }
-	@archfit check --config .archfit.yaml --full; ec=$$?; \
+	@archfit --gate --config .archfit.yaml --full; ec=$$?; \
 	if [ $$ec -eq 0 ] || [ $$ec -eq 2 ]; then exit 0; fi; \
 	echo "make: archfit drift gate FAILED (exit $$ec)"; exit $$ec
 
