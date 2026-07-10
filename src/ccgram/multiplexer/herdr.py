@@ -293,11 +293,11 @@ class HerdrManager:
         chosen = focused or panes[0]
         return chosen.get("pane_id") or None
 
-    async def _tab_list(self) -> list[dict]:
-        """Return the raw tab dicts from ``tab list`` (private, full objects)."""
+    async def _tab_list(self) -> list[dict] | None:
+        """Return raw tab dicts, or None when ``tab list`` is unavailable."""
         result = await self._call_json(["tab", "list"])
-        if not result:
-            return []
+        if result is None:
+            return None
         return [t for t in result.get("tabs", []) if t.get("tab_id")]
 
     async def _tab_get(self, tab_id: str) -> dict | None:
@@ -397,6 +397,10 @@ class HerdrManager:
         return "", cwd
 
     async def list_windows(self) -> list[WindowRef]:
+        """List windows, degrading an unavailable herdr server to an empty list."""
+        return await self.list_windows_for_reconciliation() or []
+
+    async def list_windows_for_reconciliation(self) -> list[WindowRef] | None:
         """List one ``WindowRef`` per herdr tab with its adaptive topic label.
 
         Identity: ``window_id = tab_id`` (tab identity — design Task 1). Builds
@@ -412,6 +416,8 @@ class HerdrManager:
         poll without touching the binding key (agent session id, Task 2).
         """
         tabs = await self._tab_list()
+        if tabs is None:
+            return None
         if not tabs:
             return []
         workspace_labels = await self._workspace_labels()

@@ -24,6 +24,9 @@ def _patch_deps():
         patch("ccgram.handlers.sync_command.window_query") as mock_wq,
         patch("ccgram.handlers.sync_command.thread_router") as mock_tr,
         patch("ccgram.handlers.sync_command.tmux_manager") as mock_tm,
+        patch(
+            "ccgram.handlers.sync_command.list_windows_for_reconciliation"
+        ) as mock_listing,
         patch("ccgram.handlers.sync_command.config") as mock_cfg,
     ):
         mock_sm.audit_state.return_value = AuditResult(
@@ -32,6 +35,8 @@ def _patch_deps():
         mock_tr.iter_thread_bindings.return_value = []
         mock_sm.window_states = {}
         mock_tm.list_windows = AsyncMock(return_value=[])
+        mock_tm.list_windows_for_reconciliation = mock_listing
+        mock_listing.return_value = []
         mock_cfg.is_user_allowed.return_value = True
         yield mock_sm, mock_sms, mock_wq, mock_tr, mock_tm, mock_cfg
 
@@ -241,6 +246,21 @@ class TestSyncCommand:
 
 
 class TestSyncFix:
+    async def test_unavailable_listing_does_not_change_state(self, _patch_deps) -> None:
+        mock_sm, mock_sms, _, _, mock_tm, _ = _patch_deps
+        mock_tm.list_windows_for_reconciliation.return_value = None
+        query = MagicMock()
+
+        with patch("ccgram.handlers.sync_command.safe_edit") as mock_edit:
+            await handle_sync_fix(query)
+
+        mock_sm.sync_display_names.assert_not_called()
+        mock_sm.prune_stale_state.assert_not_called()
+        mock_sms.prune_session_map.assert_not_called()
+        mock_sm.prune_stale_window_states.assert_not_called()
+        assert mock_edit.call_count == 2
+        assert "No state changes were made" in mock_edit.call_args.args[1]
+
     async def test_fix_runs_cleanup_and_re_audits(self, _patch_deps) -> None:
         mock_sm, mock_sms, _, _, _, _ = _patch_deps
         mock_sm.audit_state.side_effect = [

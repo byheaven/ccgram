@@ -32,6 +32,7 @@ from ..session_map import session_map_sync
 from ..telegram_client import PTBTelegramClient, TelegramClient
 from ..thread_router import thread_router
 from ..multiplexer import multiplexer as tmux_manager
+from ..multiplexer.reconciliation import list_windows_for_reconciliation
 from ..user_preferences import user_preferences
 from .callback_data import CB_SYNC_DISMISS, CB_SYNC_FIX
 from .callback_registry import register
@@ -450,8 +451,16 @@ async def handle_sync_fix(query: CallbackQuery) -> None:
     """Run all fix operations, re-audit, and edit message in place."""
     await safe_edit(query, "🔧 Fixing…", reply_markup=None)
 
-    # Single list_windows call — reused for both audit and fix
-    all_windows = await tmux_manager.list_windows()
+    # A destructive repair requires a confirmed multiplexer listing.
+    all_windows = await list_windows_for_reconciliation(tmux_manager)
+    if all_windows is None:
+        await safe_edit(
+            query,
+            "⚠ Multiplexer unavailable. No state changes were made.",
+            reply_markup=None,
+        )
+        return
+
     live_ids = {w.window_id for w in all_windows}
     live_pairs = [(w.window_id, w.window_name) for w in all_windows]
 

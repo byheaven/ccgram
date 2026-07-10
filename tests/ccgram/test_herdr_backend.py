@@ -465,6 +465,21 @@ async def test_find_window_by_id_bypasses_internal_label_filter() -> None:
 # ── list_windows: one WindowRef per tab ────────────────────────────────
 
 
+async def test_reconciliation_listing_returns_none_on_tab_list_failure() -> None:
+    failed = _manager(FakeHerdr())
+    empty = _manager(
+        FakeHerdr().on(
+            "tab",
+            "list",
+            out=json.dumps({"result": {"tabs": [], "type": "tab_list"}}),
+        )
+    )
+
+    assert await failed.list_windows_for_reconciliation() is None
+    assert await failed.list_windows() == []
+    assert await empty.list_windows_for_reconciliation() == []
+
+
 async def test_list_windows_returns_one_ref_per_tab() -> None:
     # Two tabs → two WindowRefs with tab_id as window_id, not pane ids.
     fake = (
